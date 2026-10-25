@@ -27,8 +27,8 @@ Cari dengan `grep -n` karena baris bisa sangat panjang (gunakan `cut -c1-300` sa
 |---|---|
 | Token warna & tema (terang/gelap) | `:root{` di `<style>`, variabel `--accent`, `--d0..--d7` (warna kategori) |
 | Header, tombol ekspor | `<header class="top">`, `#bImport #bCsv #bSvg #bPng` |
-| Navigasi 4 tampilan | `.nav` tombol `data-view` = `bagan`, `karyawan`, `setup`, `dasbor` |
-| Tampilan | `<section class="view" id="v-bagan|v-karyawan|v-setup|v-dasbor">` |
+| Navigasi 5 tampilan | `.nav` tombol `data-view` = `bagan`, `karyawan`, `setup`, `dasbor`, `surat` |
+| Tampilan | `<section class="view" id="v-bagan|v-karyawan|v-setup|v-dasbor|v-surat">` |
 | Contoh data | `var SAMPLE =` (tiap record `contoh:true`) |
 | Konstanta | `COLS`, `LIGHT` (warna ekspor), `VARS`, `FONT`, ukuran kartu `W,H,PAD` |
 | State global | `var S = {...}` (data `S.d`, tampilan, filter, zoom), indeks `M` |
@@ -40,19 +40,26 @@ Cari dengan `grep -n` karena baris bisa sangat panjang (gunakan `cut -c1-300` sa
 | Dasbor | `renderDash`, `bars`, `countBy` |
 | CSV | `toCSV`, `templateCSV`, `parseCSV`, `planImport`, `finishImport`, `onFile` |
 | Ekspor gambar/berkas | `exportSvg`, `exportPng`, `saveFile`, `directDownload` |
+| Foto & SK (IndexedDB) | `fdb ftx fget fput fdel fkeys loadFotos avaHtml kecilkan`, form: `renderFotoPrev renderSkInfo`, perubahan tertunda di `S.pf` |
+| Kontrak & pengingat | `addBulan`, `hitungAkhir`, `kirimPengingat` (mailto), panel "Pengingat kontrak" di `renderDash` |
+| ZIP & cadangan | `crc32 zipBlob unzip` (tanpa kompresi), `berkasMenu unduhCadangan pulihkanCadangan` |
+| Buat Surat | `/* ---------- SURAT ---------- */`: `SURAT` (template), `suCtx suNomor suFill suChanged renderSurat onSuSubmit`, `blokIsi letterDoc cetakSurat docxBlob unduhDocx` |
+| Pengaturan | `CFG0`, `cfg()`, `renderCfg`, `onCfgSubmit` (dokumen `pengaturan/umum`) |
 | Event | `wire()` (delegasi klik lewat atribut `data-act`) |
 | Start | baris akhir: `wire();setStatus();...initStore();` |
 
 ## Model data
 
-Enam koleksi (`COLS`), masing-masing array objek dengan `id` (dibuat `uid()`):
+Delapan koleksi (`COLS`), masing-masing array objek dengan `id` (dibuat `uid()`):
 
 - `units`: `nama, kode` (awalan ID karyawan, 2–6 huruf), `jenis` (`Induk`/`Anak`), `indukId`, `urutan`
 - `departemen`: `nama, unitId`
 - `divisi`: `nama, unitId, deptId`
 - `jabatan`: `nama, unitId, deptId, divisiId, kuota`
 - `status`: `nama, kategori` (`Tetap`/`Kontrak`/`Lainnya`; `Kontrak` memunculkan tanggal kontrak berakhir)
-- `employees`: `idKaryawan` (`KODE-TAHUN-NOMOR`, unik lintas unit), `nama, unitId, deptId, divisiId, jabatanId, golongan` (`1`–`5` atau `Organ`), `statusId, atasanId` (harus satu unit), `urutan, mulai, akhir` (`YYYY-MM-DD`), `contoh`
+- `employees`: `idKaryawan` (`KODE-TAHUN-NOMOR`, unik lintas unit), `nama, unitId, deptId, divisiId, jabatanId, golongan` (`1`–`5` atau `Organ`), `statusId, atasanId` (harus satu unit), `urutan, mulai, akhir` (`YYYY-MM-DD`), `contoh`; kontrak: `durasi` (bulan), `ingat` (`''|30|60|90`), `ingatAtasan`, `ingatDibuka`; pribadi: `tempatLahir, tglLahir, alamat, email, hp`; berkas: `foto` (bool), `skNama` (isi berkas di IndexedDB `satama-berkas`, kunci `foto:<id>`/`sk:<id>`)
+- `surat`: `jenis` (kode template), `empId, nomor, tanggal, judul, isi, ttdNama, ttdJabatan, diubah`
+- `pengaturan`: satu dokumen `id:'umum'`: `emailHR, alamat, kontak, kota, ttdNama, ttdJabatan, formatNomor`
 
 Record contoh diberi `contoh:true` agar bisa dihapus lewat `clearExamples`.
 
@@ -77,6 +84,10 @@ Record contoh diberi `contoh:true` agar bisa dihapus lewat `clearExamples`.
 - Posisi lowong = `jabatan.kuota` − jumlah karyawan pada jabatan itu (`filled`).
 - Pengingat dasbor: kontrak PKWT berakhir ≤90 hari, batas PKWT 5 tahun (PP 35/2021), masa percobaan 3 bulan.
 - Data induk yang masih dipakai tidak boleh dihapus (`usage`).
+- Akhir kontrak = tanggal bergabung + durasi bulan − 1 hari (`addBulan`). Kolom kontrak hanya untuk status kategori Kontrak.
+- Email pengingat hanya lewat `mailto:` (tanpa server). Penerima: email HR + atasan bila `ingatAtasan`.
+- Foto dan SK tidak masuk CSV; cadangannya lewat ZIP. Hapus berkas IndexedDB saat karyawan dihapus.
+- `.docx` dibuat sendiri (ZIP + WordprocessingML). Jaga urutan elemen sesuai skema (mis. `pPr`: pBdr, tabs, spacing, ind, jc; `rPr`: b, sz, szCs, u).
 
 ## Tampilan
 
